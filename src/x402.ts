@@ -48,6 +48,10 @@ export function buildChallenge(tool: ToolName, description: string): X402Challen
 // Payment SDK / facilitator endpoint is confirmed — see verifyPayment() below.
 export function requirePayment(tool: ToolName, description: string) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    // Dev/calibration bypass: run the engine without a wallet or payment.
+    // Never set ALLOW_UNPAID=1 in a deployed environment.
+    if (process.env.ALLOW_UNPAID === "1") { next(); return; }
+
     if (!isConfiguredForPayment()) {
       res.status(503).json({
         error: "payment_not_configured",

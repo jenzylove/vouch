@@ -1,6 +1,13 @@
 import express from "express";
 import { config, isConfiguredForPayment } from "./config.js";
 import { requirePayment } from "./x402.js";
+import { DataHarness } from "./harness/data.js";
+import type { Criterion, Deliverable } from "./harness/types.js";
+import {
+  finalizeReport, newReportId, sha256Hex, canonicalize, tally, verifyReport,
+  type ReportCore, type Report,
+} from "./report.js";
+import { saveReport, loadReport } from "./store.js";
 
 const app = express();
 app.use(express.json({ limit: "5mb" }));
@@ -11,42 +18,87 @@ const SERVICE = {
   version: "0.1.0",
 };
 
-// Liveness/readiness — AI judges and uptime checks hit this. Never gated.
 app.get("/health", (_req, res) => {
   res.json({ ok: true, ...SERVICE, paymentConfigured: isConfiguredForPayment() });
 });
 
-// Service manifest — what this A2MCP endpoint offers and how it is priced.
 app.get("/", (_req, res) => {
   res.json({
     ...SERVICE,
     network: config.network,
     tools: [
       { name: "compile_spec", price: config.prices.compile_spec, unit: "USDT base units",
-        summary: "Turn a vague task posting into machine-verifiable acceptance criteria." },
+        summary: "Turn a vague task posting into machine-verifiable acceptance criteria.", status: "in-progress" },
       { name: "inspect_delivery", price: config.prices.inspect_delivery, unit: "USDT base units",
-        summary: "Verify a deliverable against criteria with evidence-backed harnesses; signed report." },
+        summary: "Verify a deliverable against criteria with evidence-backed harnesses; signed report.", status: "live (data harness)" },
       { name: "evidence_pack", price: config.prices.evidence_pack, unit: "USDT base units",
-        summary: "Bundle a report as arbitration-ready evidence (OKX evaluators / GenLayer)." },
+        summary: "Bundle a report as arbitration-ready evidence (OKX evaluators / GenLayer).", status: "planned" },
     ],
   });
 });
 
-// --- Paid tools (x402-gated). Handlers are Phase-1 stubs for now. ---
+// --- inspect_delivery: the evidence engine ----------------------------------
 
-app.post("/compile_spec", requirePayment("compile_spec",
-  "Compile a task spec into verifiable acceptance criteria."), (req, res) => {
-  res.json({ tool: "compile_spec", status: "stub", received: req.body ?? null });
-});
+const dataHarness = new DataHarness();
 
 app.post("/inspect_delivery", requirePayment("inspect_delivery",
-  "Evidence-based verification of a deliverable against acceptance criteria."), (req, res) => {
-  res.json({ tool: "inspect_delivery", status: "stub", received: req.body ?? null });
+  "Evidence-based verification of a deliverable against acceptance criteria."), async (req, res) => {
+  const body = req.body as { type?: string; deliverable?: Deliverable; criteria?: Criterion[] } | undefined;
+  const type = body?.type;
+  const deliverable = body?.deliverable;
+  const criteria = body?.criteria ?? [];
+
+  if (type !== "data") {
+    res.status(400).json({
+      error: "unsupported_type",
+      supported: ["data"],
+      message: "Only 'data' deliverables are implemented so far; code and content harnesses are in progress.",
+    });
+    return;
+  }
+  if (!deliverable?.content || !deliverable.format) {
+    res.status(400).json({ error: "bad_deliverable", message: "deliverable.format and deliverable.content are required." });
+    return;
+  }
+
+  try {
+    const { results, forensics } = dataHarness.run(deliverable, criteria);
+    const score = tally(results);
+    const core: ReportCore = {
+      id: newReportId(),
+      createdAt: new Date().toISOString(),
+      tool: "inspect_delivery",
+      deliverableType: "data",
+      deliverableSha256: sha256Hex(deliverable.content),
+      criteriaSha256: sha256Hex(canonicalize(criteria)),
+      results,
+      forensics,
+      score,
+      verdict: score.failed + score.errored === 0 ? "pass" : "fail",
+    };
+    const report = finalizeReport(core);
+    saveReport(report);
+    res.json({ ...report, view: `${config.publicBaseUrl}/r/${report.id}` });
+  } catch (e) {
+    res.status(422).json({ error: "inspection_failed", message: (e as Error).message });
+  }
 });
 
-app.post("/evidence_pack", requirePayment("evidence_pack",
-  "Arbitration-ready evidence bundle for a prior report."), (req, res) => {
-  res.json({ tool: "evidence_pack", status: "stub", received: req.body ?? null });
+// Public report view (JSON for now; HTML viewer in a later phase).
+app.get("/r/:id", (req, res) => {
+  const r = loadReport(req.params.id);
+  if (!r) { res.status(404).json({ error: "not_found" }); return; }
+  res.json(r);
+});
+
+// Anyone can verify a report's hash + signature independently.
+app.post("/verify", (req, res) => {
+  const report = req.body as Report | undefined;
+  if (!report?.reportSha256 || !report.signature) {
+    res.status(400).json({ error: "bad_report", message: "Provide a full report object to verify." });
+    return;
+  }
+  res.json(verifyReport(report));
 });
 
 const server = app.listen(config.port, () => {
