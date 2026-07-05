@@ -2,7 +2,8 @@ import express from "express";
 import { config, isConfiguredForPayment } from "./config.js";
 import { requirePayment } from "./x402.js";
 import { DataHarness } from "./harness/data.js";
-import type { Criterion, Deliverable } from "./harness/types.js";
+import { ContentHarness } from "./harness/content.js";
+import type { Criterion, Deliverable, Harness } from "./harness/types.js";
 import {
   finalizeReport, newReportId, sha256Hex, canonicalize, tally, verifyReport,
   type ReportCore, type Report,
@@ -30,7 +31,7 @@ app.get("/", (_req, res) => {
       { name: "compile_spec", price: config.prices.compile_spec, unit: "USDT base units",
         summary: "Turn a vague task posting into machine-verifiable acceptance criteria.", status: "in-progress" },
       { name: "inspect_delivery", price: config.prices.inspect_delivery, unit: "USDT base units",
-        summary: "Verify a deliverable against criteria with evidence-backed harnesses; signed report.", status: "live (data harness)" },
+        summary: "Verify a deliverable against criteria with evidence-backed harnesses; signed report.", status: "live (data + content harnesses)" },
       { name: "evidence_pack", price: config.prices.evidence_pack, unit: "USDT base units",
         summary: "Bundle a report as arbitration-ready evidence (OKX evaluators / GenLayer).", status: "planned" },
     ],
@@ -39,20 +40,24 @@ app.get("/", (_req, res) => {
 
 // --- inspect_delivery: the evidence engine ----------------------------------
 
-const dataHarness = new DataHarness();
+const harnesses: Record<string, Harness> = {
+  data: new DataHarness(),
+  content: new ContentHarness(),
+};
 
 app.post("/inspect_delivery", requirePayment("inspect_delivery",
   "Evidence-based verification of a deliverable against acceptance criteria."), async (req, res) => {
   const body = req.body as { type?: string; deliverable?: Deliverable; criteria?: Criterion[] } | undefined;
-  const type = body?.type;
+  const type = body?.type ?? "";
   const deliverable = body?.deliverable;
   const criteria = body?.criteria ?? [];
+  const harness = harnesses[type];
 
-  if (type !== "data") {
+  if (!harness) {
     res.status(400).json({
       error: "unsupported_type",
-      supported: ["data"],
-      message: "Only 'data' deliverables are implemented so far; code and content harnesses are in progress.",
+      supported: Object.keys(harnesses),
+      message: `Deliverable type '${type || "(missing)"}' has no harness. The code harness is in progress.`,
     });
     return;
   }
@@ -62,13 +67,13 @@ app.post("/inspect_delivery", requirePayment("inspect_delivery",
   }
 
   try {
-    const { results, forensics } = dataHarness.run(deliverable, criteria);
+    const { results, forensics } = await harness.run(deliverable, criteria);
     const score = tally(results);
     const core: ReportCore = {
       id: newReportId(),
       createdAt: new Date().toISOString(),
       tool: "inspect_delivery",
-      deliverableType: "data",
+      deliverableType: type,
       deliverableSha256: sha256Hex(deliverable.content),
       criteriaSha256: sha256Hex(canonicalize(criteria)),
       results,

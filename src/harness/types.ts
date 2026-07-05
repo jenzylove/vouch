@@ -12,13 +12,22 @@ export interface Deliverable {
 // carries exactly the parameters it needs. compile_spec (LLM) will emit these;
 // they can also be supplied directly for the calibration benchmark.
 export type Check =
+  // data checks
   | { kind: "columns_present"; columns: string[] }
   | { kind: "row_count_min"; min: number }
   | { kind: "row_count_max"; max: number }
   | { kind: "no_nulls"; columns: string[] }
   | { kind: "unique"; columns: string[] }
   | { kind: "numeric"; column: string }
-  | { kind: "numeric_range"; column: string; min?: number; max?: number };
+  | { kind: "numeric_range"; column: string; min?: number; max?: number }
+  // content checks
+  | { kind: "must_include"; phrases: string[]; mode?: "all" | "any" }
+  | { kind: "must_not_include"; phrases: string[] }
+  | { kind: "min_words"; min: number }
+  | { kind: "max_words"; max: number }
+  | { kind: "no_placeholders" }
+  | { kind: "ai_disclosure_present" }
+  | { kind: "no_duplicate_paragraphs" };
 
 export interface Criterion {
   id: string;

@@ -154,6 +154,8 @@ function evaluate(t: Table, check: Check): { status: "pass" | "fail"; evidence: 
         ? { status: "pass", evidence: [{ kind: "numeric_range", detail: `all ${check.column} within ${bounds}` }] }
         : { status: "fail", evidence: [{ kind: "out_of_range", detail: `${offenders.length} value(s) outside ${bounds}; first: ${sample(offenders)}`, data: offenders.slice(0, MAX_LISTED) }] };
     }
+    default:
+      throw new Error(`'${(check as { kind: string }).kind}' is not a data check`);
   }
 }
 

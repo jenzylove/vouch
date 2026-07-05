@@ -51,4 +51,6 @@ console.log("verify(tampered flip fail→pass):", JSON.stringify(v2));
 
 const okAll = report.verdict === "fail" && v1.ok === true && v2.ok === false;
 console.log(okAll ? "\nSMOKE: PASS ✅" : "\nSMOKE: FAIL ❌");
-process.exit(okAll ? 0 : 1);
+// Set exitCode and let the event loop drain (avoids a Node/Windows libuv abort
+// that fires when process.exit() runs while keep-alive sockets are still open).
+process.exitCode = okAll ? 0 : 1;
