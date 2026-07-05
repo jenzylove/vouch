@@ -9,6 +9,7 @@ import {
   type ReportCore, type Report,
 } from "./report.js";
 import { saveReport, loadReport } from "./store.js";
+import { compileSpec, LlmNotConfiguredError, type DeliverableType } from "./compile.js";
 
 const app = express();
 app.use(express.json({ limit: "5mb" }));
@@ -29,7 +30,7 @@ app.get("/", (_req, res) => {
     network: config.network,
     tools: [
       { name: "compile_spec", price: config.prices.compile_spec, unit: "USDT base units",
-        summary: "Turn a vague task posting into machine-verifiable acceptance criteria.", status: "in-progress" },
+        summary: "Turn a vague task posting into machine-verifiable acceptance criteria.", status: "ready (set ANTHROPIC_API_KEY)" },
       { name: "inspect_delivery", price: config.prices.inspect_delivery, unit: "USDT base units",
         summary: "Verify a deliverable against criteria with evidence-backed harnesses; signed report.", status: "live (data + content harnesses)" },
       { name: "evidence_pack", price: config.prices.evidence_pack, unit: "USDT base units",
@@ -87,6 +88,40 @@ app.post("/inspect_delivery", requirePayment("inspect_delivery",
   } catch (e) {
     res.status(422).json({ error: "inspection_failed", message: (e as Error).message });
   }
+});
+
+// --- compile_spec: vague task -> verifiable acceptance criteria -------------
+
+app.post("/compile_spec", requirePayment("compile_spec",
+  "Compile a task spec into machine-verifiable acceptance criteria."), async (req, res) => {
+  const body = req.body as { spec?: string; deliverableType?: string } | undefined;
+  const spec = body?.spec;
+  const deliverableType = body?.deliverableType;
+  if (typeof spec !== "string" || spec.trim().length === 0) {
+    res.status(400).json({ error: "bad_spec", message: "Provide a non-empty 'spec' string." });
+    return;
+  }
+  if (deliverableType !== "data" && deliverableType !== "content") {
+    res.status(400).json({ error: "bad_deliverable_type", supported: ["data", "content"], message: "deliverableType must be 'data' or 'content'." });
+    return;
+  }
+  try {
+    const criteria = await compileSpec(spec, deliverableType as DeliverableType);
+    res.json({ tool: "compile_spec", deliverableType, criteria });
+  } catch (e) {
+    if (e instanceof LlmNotConfiguredError) {
+      res.status(503).json({ error: "llm_not_configured", message: "compile_spec needs ANTHROPIC_API_KEY set on the server." });
+      return;
+    }
+    res.status(422).json({ error: "compile_failed", message: (e as Error).message });
+  }
+});
+
+// --- evidence_pack: arbitration-ready bundle (planned, Phase 2) --------------
+
+app.post("/evidence_pack", requirePayment("evidence_pack",
+  "Arbitration-ready evidence bundle for a prior report."), (_req, res) => {
+  res.status(501).json({ error: "not_implemented", message: "evidence_pack is planned (Phase 2)." });
 });
 
 // Public report view (JSON for now; HTML viewer in a later phase).
