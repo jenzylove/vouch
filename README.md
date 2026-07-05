@@ -59,8 +59,10 @@ Build for the OKX.AI Genesis Hackathon (submissions close 2026-07-17).
 - ✅ Paste-in web UI (`/app`), embeddable badge (`/badge/:id.svg`), HTML report view (`/r/:id`)
 - ✅ Calibration benchmark (`/calibration`) — 23 fixtures, 100% catch rate, 0% false positives (data + content only; code checks are live-tested separately in `test/smoke-code.mjs` since they cost real API calls)
 - ✅ `evidence_pack` — arbitration-ready bundle (verbatim signed report + plain-English brief) for a prior report
+- ✅ ASP avatar finalized (`assets/vouch-avatar.png`, 512×512, legible at 40px)
+- 🚀 Deploying to Railway ([`docs/deploy-railway.md`](docs/deploy-railway.md); Vercel's read-only serverless filesystem is incompatible with the local signing key + report storage this service relies on)
 - ⏳ Payment verification against an X Layer facilitator (payment gate currently a dev stub), on-chain anchoring of report hashes
-- 📝 ASP registration copy drafted ahead of time in [`docs/asp-registration.md`](docs/asp-registration.md) — blocked only on a deployed URL, an avatar image, and wallet login
+- 📝 ASP registration copy drafted ahead of time in [`docs/asp-registration.md`](docs/asp-registration.md) — blocked only on a deployed URL and wallet login
 
 ## Run
 

@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "description": "Vouch — the notary for the agent economy. An A2MCP service on OKX.AI that compiles vague task specs into verifiable acceptance criteria, inspects delivered work against them with evidence-backed harnesses, and anchors signed reports on X Layer.",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "node dist/server.js",
@@ -17,6 +20,7 @@
   "devDependencies": {
     "@types/express": "^5.0.0",
     "@types/node": "^24.0.0",
+    "sharp": "^0.35.3",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0"
   }

@@ -8,14 +8,14 @@ skill (`register.md`) — run via `onchainos agent pre-check --role asp` then
 
 ## Blocked on (needs you, not more code)
 
-1. **Avatar image — required, no default, no links accepted.** The CLI rejects
-   ASP registration without one. This is a brand/creative decision only you can
-   make — a simple notary/seal-themed square image works well thematically.
-   I can help design or generate one once you're ready; flagging it here so it
-   doesn't surprise you at the confirmation card.
+1. ~~Avatar image~~ — **done.** `assets/vouch-avatar.png` (512×512, opaque,
+   the "Stamped Circle" concept — brass checkmark on an ink-navy ground with
+   a subtle stamped-edge texture). Verified legible at 40px (actual
+   marketplace-thumbnail size).
 2. **A deployed public HTTPS endpoint.** Registration is permanent on-chain —
-   `localhost` / private IPs are rejected outright. Needs the service actually
-   deployed (Railway/Fly/a VPS — whatever we land on) before this can run.
+   `localhost` / private IPs are rejected outright. Deploying to Railway now
+   (see [`docs/deploy-railway.md`](deploy-railway.md)); replace every
+   `<deployed-domain>` below once that URL exists.
 3. **Wallet login**, so the CLI has a session to sign the registration with.
 
 ## Step 1 — Identity
@@ -25,7 +25,7 @@ skill (`register.md`) — run via `onchainos agent pre-check --role asp` then
 | Role | ASP |
 | Name | `Vouch` |
 | Description | Vouch is the notary for the agent economy: it verifies delivered work against pre-agreed acceptance criteria and issues a signed, reproducible pass/fail report — so escrow can release with confidence, and so disputes have evidence to rule on when they do happen. |
-| Avatar | *(pending — see above)* |
+| Avatar | `assets/vouch-avatar.png` |
 
 ## Step 2 — Services
 
