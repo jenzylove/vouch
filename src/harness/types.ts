@@ -27,7 +27,11 @@ export type Check =
   | { kind: "max_words"; max: number }
   | { kind: "no_placeholders" }
   | { kind: "ai_disclosure_present" }
-  | { kind: "no_duplicate_paragraphs" };
+  | { kind: "no_duplicate_paragraphs" }
+  // code checks (Python only for now — see harness/code.ts)
+  | { kind: "syntax_valid" }
+  | { kind: "tests_pass"; testCode: string }
+  | { kind: "no_banned_imports"; modules: string[] };
 
 export interface Criterion {
   id: string;

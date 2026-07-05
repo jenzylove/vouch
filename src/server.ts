@@ -5,6 +5,7 @@ import { config, isConfiguredForPayment } from "./config.js";
 import { requirePayment } from "./x402.js";
 import { DataHarness } from "./harness/data.js";
 import { ContentHarness } from "./harness/content.js";
+import { CodeHarness } from "./harness/code.js";
 import type { Criterion, Deliverable, Harness } from "./harness/types.js";
 import {
   finalizeReport, newReportId, sha256Hex, canonicalize, tally, verifyReport,
@@ -48,7 +49,7 @@ app.get("/", (_req, res) => {
       { name: "compile_spec", price: config.prices.compile_spec, unit: "USDT base units",
         summary: "Turn a vague task posting into machine-verifiable acceptance criteria.", status: "ready (set ANTHROPIC_API_KEY)" },
       { name: "inspect_delivery", price: config.prices.inspect_delivery, unit: "USDT base units",
-        summary: "Verify a deliverable against criteria with evidence-backed harnesses; signed report.", status: "live (data + content harnesses)" },
+        summary: "Verify a deliverable against criteria with evidence-backed harnesses; signed report.", status: "live (data + content + code[Python] harnesses)" },
       { name: "evidence_pack", price: config.prices.evidence_pack, unit: "USDT base units",
         summary: "Bundle a report as arbitration-ready evidence (OKX evaluators / GenLayer).", status: "live" },
     ],
@@ -62,6 +63,7 @@ app.get("/", (_req, res) => {
 const harnesses: Record<string, Harness> = {
   data: new DataHarness(),
   content: new ContentHarness(),
+  code: new CodeHarness(),
 };
 
 app.post("/inspect_delivery", requirePayment("inspect_delivery",
@@ -76,7 +78,7 @@ app.post("/inspect_delivery", requirePayment("inspect_delivery",
     res.status(400).json({
       error: "unsupported_type",
       supported: Object.keys(harnesses),
-      message: `Deliverable type '${type || "(missing)"}' has no harness. The code harness is in progress.`,
+      message: `Deliverable type '${type || "(missing)"}' has no harness.`,
     });
     return;
   }
@@ -119,8 +121,8 @@ app.post("/compile_spec", requirePayment("compile_spec",
     res.status(400).json({ error: "bad_spec", message: "Provide a non-empty 'spec' string." });
     return;
   }
-  if (deliverableType !== "data" && deliverableType !== "content") {
-    res.status(400).json({ error: "bad_deliverable_type", supported: ["data", "content"], message: "deliverableType must be 'data' or 'content'." });
+  if (deliverableType !== "data" && deliverableType !== "content" && deliverableType !== "code") {
+    res.status(400).json({ error: "bad_deliverable_type", supported: ["data", "content", "code"], message: "deliverableType must be 'data', 'content', or 'code'." });
     return;
   }
   try {

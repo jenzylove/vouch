@@ -15,11 +15,12 @@ export class LlmNotConfiguredError extends Error {
   }
 }
 
-export type DeliverableType = "data" | "content";
+export type DeliverableType = "data" | "content" | "code";
 
 const DATA_KINDS = ["columns_present", "row_count_min", "row_count_max", "no_nulls", "unique", "numeric", "numeric_range"] as const;
 const CONTENT_KINDS = ["must_include", "must_not_include", "min_words", "max_words", "no_placeholders", "ai_disclosure_present", "no_duplicate_paragraphs"] as const;
-const KINDS_BY_TYPE: Record<DeliverableType, readonly string[]> = { data: DATA_KINDS, content: CONTENT_KINDS };
+const CODE_KINDS = ["syntax_valid", "tests_pass", "no_banned_imports"] as const;
+const KINDS_BY_TYPE: Record<DeliverableType, readonly string[]> = { data: DATA_KINDS, content: CONTENT_KINDS, code: CODE_KINDS };
 
 const CATALOG: Record<string, string> = {
   columns_present: "columns_present {columns:string[]} — the deliverable has these columns",
@@ -36,6 +37,9 @@ const CATALOG: Record<string, string> = {
   no_placeholders: "no_placeholders {} — no lorem ipsum / TODO / [insert…] left in",
   ai_disclosure_present: "ai_disclosure_present {} — an AI-generation disclosure phrase appears",
   no_duplicate_paragraphs: "no_duplicate_paragraphs {} — no repeated paragraphs",
+  syntax_valid: "syntax_valid {} — the Python code compiles without a syntax error",
+  tests_pass: "tests_pass {testCode:string} — a Python test script (run against the deliverable) exits 0",
+  no_banned_imports: "no_banned_imports {modules:string[]} — none of these modules are imported",
 };
 
 function buildSystem(type: DeliverableType): string {
@@ -83,6 +87,8 @@ const OUTPUT_SCHEMA = {
               max: { type: "number" },
               phrases: { type: "array", items: { type: "string" } },
               mode: { type: "string", enum: ["all", "any"] },
+              testCode: { type: "string" },
+              modules: { type: "array", items: { type: "string" } },
             },
           },
         },
@@ -137,6 +143,9 @@ function toCheck(c: RawCheck, i: number): Check {
     case "no_placeholders": return { kind: k };
     case "ai_disclosure_present": return { kind: k };
     case "no_duplicate_paragraphs": return { kind: k };
+    case "syntax_valid": return { kind: k };
+    case "tests_pass": return { kind: k, testCode: str("testCode") };
+    case "no_banned_imports": return { kind: k, modules: strArr("modules") };
     default: throw new Error(`criterion[${i}] unknown check kind '${k}'`);
   }
 }

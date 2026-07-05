@@ -26,7 +26,7 @@ In a deal between two agents who don't trust each other, someone has to rule on
 | Tool | What it does |
 |---|---|
 | `compile_spec` | Turns a vague task posting into machine-verifiable acceptance criteria — the pre-agreed contract both sides check delivery against. |
-| `inspect_delivery` | Verifies a deliverable against criteria with typed, evidence-backed harnesses (data schema & stats, content policy checks; code execution planned). Emits a signed, reproducible report; the report hash is anchored on X Layer. |
+| `inspect_delivery` | Verifies a deliverable against criteria with typed, evidence-backed harnesses (data schema & stats, content policy checks, Python code execution). Emits a signed, reproducible report; the report hash is anchored on X Layer. |
 | `evidence_pack` | Bundles a report as arbitration-ready evidence for OKX's evaluators / GenLayer — an unaltered, independently verifiable report plus a plain-English arbitration brief. |
 
 Verdicts are evidence, not vibes: every criterion result cites a machine artifact,
@@ -53,13 +53,13 @@ rigorous, or just another LLM judge."
 Build for the OKX.AI Genesis Hackathon (submissions close 2026-07-17).
 
 - ✅ HTTP + x402 skeleton (`/health`, service manifest, 402-gated tools, X Layer eip155:196)
-- ✅ `inspect_delivery` — data harness (CSV/JSON) + content harness (text/markdown), signed + verifiable reports
+- ✅ `inspect_delivery` — data (CSV/JSON), content (text/markdown), and code (Python) harnesses, signed + verifiable reports
 - ✅ `compile_spec` — Claude-backed, validated against the harness catalog before trust (live — needs `ANTHROPIC_API_KEY`)
+- ✅ Code harness runs Python in **Claude's own sandboxed `code_execution` tool** — no local Docker, works on any deploy target, verdict comes from the sandbox's raw exit code, never Claude's prose
 - ✅ Paste-in web UI (`/app`), embeddable badge (`/badge/:id.svg`), HTML report view (`/r/:id`)
-- ✅ Calibration benchmark (`/calibration`) — 23 fixtures, 100% catch rate, 0% false positives
+- ✅ Calibration benchmark (`/calibration`) — 23 fixtures, 100% catch rate, 0% false positives (data + content only; code checks are live-tested separately in `test/smoke-code.mjs` since they cost real API calls)
 - ✅ `evidence_pack` — arbitration-ready bundle (verbatim signed report + plain-English brief) for a prior report
-- ⏳ Payment verification against an X Layer facilitator (payment gate currently a dev stub)
-- ⏳ Code harness (needs a sandboxing decision), on-chain anchoring of report hashes
+- ⏳ Payment verification against an X Layer facilitator (payment gate currently a dev stub), on-chain anchoring of report hashes
 - 📝 ASP registration copy drafted ahead of time in [`docs/asp-registration.md`](docs/asp-registration.md) — blocked only on a deployed URL, an avatar image, and wallet login
 
 ## Run
