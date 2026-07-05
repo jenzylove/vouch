@@ -31,9 +31,22 @@ In a deal between two agents who don't trust each other, someone has to rule on
 
 Verdicts are evidence, not vibes: every criterion result cites a machine artifact,
 and the report can be independently re-verified (`/verify`) or re-run from the
-same criteria. A public calibration benchmark (seeded deliverables with planted
-defects) publishes the inspector's catch rate — the answer to "is this actually
+same criteria. The **[calibration benchmark](/calibration)** — 23 seeded
+deliverables with known, hand-planted defects, re-run fresh on every request —
+publishes the inspector's catch rate: currently **100% catch rate, 0% false
+positives** across 57 individual checks. That's the answer to "is this actually
 rigorous, or just another LLM judge."
+
+## Try it
+
+- **[/app](/app)** — paste a deliverable, get a signed verdict. No wallet, no
+  other agent, no integration required — this is the cold-start bridge until
+  the marketplace has real A2A traffic to verify.
+- **[/calibration](/calibration)** — the reproducible proof the harnesses actually
+  catch what they claim to.
+- Every report gets a shareable link (`/r/:id`, renders as HTML for a browser or
+  JSON for an API/agent client via content negotiation) and an embeddable
+  status badge (`/badge/:id.svg`) an ASP can display on its own listing.
 
 ## Status
 
@@ -41,9 +54,11 @@ Build for the OKX.AI Genesis Hackathon (submissions close 2026-07-17).
 
 - ✅ HTTP + x402 skeleton (`/health`, service manifest, 402-gated tools, X Layer eip155:196)
 - ✅ `inspect_delivery` — data harness (CSV/JSON) + content harness (text/markdown), signed + verifiable reports
-- ✅ `compile_spec` — Claude-backed, validated against the harness catalog before trust (needs `ANTHROPIC_API_KEY`)
+- ✅ `compile_spec` — Claude-backed, validated against the harness catalog before trust (live — needs `ANTHROPIC_API_KEY`)
+- ✅ Paste-in web UI (`/app`), embeddable badge (`/badge/:id.svg`), HTML report view (`/r/:id`)
+- ✅ Calibration benchmark (`/calibration`) — 23 fixtures, 100% catch rate, 0% false positives
 - ⏳ Payment verification against an X Layer facilitator (payment gate currently a dev stub)
-- ⏳ Paste-in web UI, embeddable badge, calibration benchmark, code harness, on-chain anchoring
+- ⏳ Code harness (needs a sandboxing decision), on-chain anchoring of report hashes, `evidence_pack`
 
 ## Run
 

@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vouch — verify before you pay</title>
+<style>
+  :root { color-scheme: light dark; --accent: #2ea44f; --fail: #d1242f; --border: rgba(127,127,127,.28); }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 980px; margin: 32px auto; padding: 0 20px 60px; line-height: 1.5; }
+  header { margin-bottom: 6px; }
+  h1 { font-size: 1.6rem; margin: 0 0 4px; }
+  .tagline { color: #777; margin: 0 0 28px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+  .panel { border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+  .panel h2 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: .04em; color: #888; margin: 0 0 12px; }
+  label { display: block; font-size: 0.85rem; font-weight: 600; margin: 12px 0 4px; }
+  label:first-child { margin-top: 0; }
+  select, textarea, input[type=text] {
+    width: 100%; font-family: inherit; font-size: 0.9rem; padding: 8px 10px;
+    border: 1px solid var(--border); border-radius: 6px; background: transparent; color: inherit;
+  }
+  textarea { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; resize: vertical; }
+  textarea.deliverable { height: 160px; }
+  textarea.criteria { height: 220px; }
+  textarea.spec { height: 70px; font-family: inherit; }
+  .row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  button {
+    font-family: inherit; font-size: 0.85rem; font-weight: 600; padding: 8px 14px;
+    border-radius: 6px; border: 1px solid var(--border); background: transparent; color: inherit; cursor: pointer;
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.big { width: 100%; padding: 14px; font-size: 1rem; margin-top: 20px; }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .hint { font-size: 0.78rem; color: #888; margin-top: 6px; }
+  #status { font-size: 0.85rem; margin-top: 10px; min-height: 1.2em; }
+  #status.error { color: var(--fail); }
+  #results { margin-top: 32px; }
+  .verdict { display: inline-block; font-weight: 700; padding: 4px 14px; border-radius: 6px; margin-bottom: 14px; }
+  .verdict.pass { background: #d7f5df; color: #16632f; }
+  .verdict.fail { background: #fbdadd; color: #8e1420; }
+  @media (prefers-color-scheme: dark) {
+    .verdict.pass { background: #113c20; color: #6fdc93; }
+    .verdict.fail { background: #3d1418; color: #ff9aa2; }
+  }
+  .criterion { border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; margin-bottom: 8px; }
+  .crow { display: flex; align-items: center; gap: 10px; }
+  .chip { font-size: 0.72rem; font-weight: 700; padding: 2px 7px; border-radius: 5px; text-transform: uppercase; }
+  .chip.pass { background: #d7f5df; color: #16632f; }
+  .chip.fail { background: #fbdadd; color: #8e1420; }
+  .chip.error { background: #fdf0d5; color: #8a5a00; }
+  @media (prefers-color-scheme: dark) {
+    .chip.pass { background: #113c20; color: #6fdc93; }
+    .chip.fail { background: #3d1418; color: #ff9aa2; }
+    .chip.error { background: #3a2c08; color: #f2c14e; }
+  }
+  .evidence { margin: 6px 0 0; padding-left: 18px; font-size: 0.85rem; color: #888; }
+  .footer-links { margin-top: 16px; font-size: 0.85rem; }
+  .footer-links a { margin-right: 14px; }
+  code.small { font-size: 0.8rem; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>Vouch</h1>
+    <p class="tagline">The notary for the agent economy — verify a deliverable against acceptance criteria before you pay.
+      <a href="/calibration" target="_blank">See our calibration benchmark ↗</a></p>
+  </header>
+
+  <div class="grid">
+    <div class="panel">
+      <h2>1 · Deliverable</h2>
+      <label>Type</label>
+      <select id="type">
+        <option value="data">Data (CSV / JSON)</option>
+        <option value="content">Content (text / markdown)</option>
+      </select>
+      <label>Format</label>
+      <select id="format">
+        <option value="csv">csv</option>
+        <option value="json">json</option>
+        <option value="markdown">markdown</option>
+      </select>
+      <label>Content</label>
+      <textarea id="deliverable" class="deliverable" placeholder="Paste the CSV, JSON, or text deliverable here…"></textarea>
+      <div class="row">
+        <button id="loadDataExample">Load data example</button>
+        <button id="loadContentExample">Load content example</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>2 · Acceptance criteria</h2>
+      <label>Describe the task (optional — compiles criteria with AI)</label>
+      <textarea id="spec" class="spec" placeholder="e.g. a product CSV with sku, price, name columns; price must be numeric and between 0 and 1000; sku must be unique"></textarea>
+      <div class="row">
+        <button id="compile">Compile criteria with AI</button>
+      </div>
+      <div id="compileStatus" class="hint"></div>
+      <label>Criteria (JSON — edit directly, or let compile fill this in)</label>
+      <textarea id="criteria" class="criteria" placeholder="[ { &quot;id&quot;: &quot;c1&quot;, &quot;description&quot;: &quot;...&quot;, &quot;check&quot;: { &quot;kind&quot;: &quot;...&quot; } } ]"></textarea>
+    </div>
+  </div>
+
+  <button id="inspect" class="big primary">Inspect deliverable</button>
+  <div id="status"></div>
+
+  <div id="results"></div>
+
+<script>
+const DATA_EXAMPLE = {
+  format: "csv",
+  content: "sku,price,name\nA1,9.99,Widget\nA2,,Gadget\nA1,19.99,Gizmo\nA3,99999,Doohickey\nA4,4.50,Sprocket",
+};
+const DATA_CRITERIA = [
+  { id: "c1", description: "Has sku, price, name columns", check: { kind: "columns_present", columns: ["sku", "price", "name"] } },
+  { id: "c2", description: "At least 3 rows", check: { kind: "row_count_min", min: 3 } },
+  { id: "c3", description: "price has no nulls", check: { kind: "no_nulls", columns: ["price"] } },
+  { id: "c4", description: "sku is unique", check: { kind: "unique", columns: ["sku"] } },
+  { id: "c5", description: "price within [0,1000]", check: { kind: "numeric_range", column: "price", min: 0, max: 1000 } },
+];
+const CONTENT_EXAMPLE = {
+  format: "markdown",
+  content: "Welcome to our premium crypto fund. We offer guaranteed returns on every deposit, no questions asked.\n\nOur team has decades of combined experience across traditional finance and decentralized protocols.\n\nOur team has decades of combined experience across traditional finance and decentralized protocols.\n\nSign up before [insert date] to lock in the early-bird rate and start earning today.",
+};
+const CONTENT_CRITERIA = [
+  { id: "c1", description: "Mentions the refund policy", check: { kind: "must_include", phrases: ["refund policy"], mode: "all" } },
+  { id: "c2", description: "No 'guaranteed returns' claim", check: { kind: "must_not_include", phrases: ["guaranteed returns"] } },
+  { id: "c3", description: "No leftover placeholders", check: { kind: "no_placeholders" } },
+  { id: "c4", description: "Discloses AI generation", check: { kind: "ai_disclosure_present" } },
+  { id: "c5", description: "No duplicated paragraphs", check: { kind: "no_duplicate_paragraphs" } },
+];
+
+const $ = (id) => document.getElementById(id);
+
+$("loadDataExample").onclick = () => {
+  $("type").value = "data"; $("format").value = "csv";
+  $("deliverable").value = DATA_EXAMPLE.content;
+  $("criteria").value = JSON.stringify(DATA_CRITERIA, null, 2);
+};
+$("loadContentExample").onclick = () => {
+  $("type").value = "content"; $("format").value = "markdown";
+  $("deliverable").value = CONTENT_EXAMPLE.content;
+  $("criteria").value = JSON.stringify(CONTENT_CRITERIA, null, 2);
+};
+
+$("compile").onclick = async () => {
+  const spec = $("spec").value.trim();
+  const deliverableType = $("type").value;
+  if (!spec) { $("compileStatus").textContent = "Describe the task first."; return; }
+  $("compileStatus").textContent = "Compiling…";
+  try {
+    const r = await fetch("/compile_spec", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ spec, deliverableType }),
+    });
+    const body = await r.json();
+    if (r.status === 503) {
+      $("compileStatus").textContent = "AI compiler isn't connected on this server yet — write criteria manually, or use a Load example button.";
+      return;
+    }
+    if (!r.ok) { $("compileStatus").textContent = "Compile failed: " + (body.message || r.status); return; }
+    $("criteria").value = JSON.stringify(body.criteria, null, 2);
+    $("compileStatus").textContent = "Criteria compiled — review before inspecting.";
+  } catch (e) {
+    $("compileStatus").textContent = "Network error: " + e.message;
+  }
+};
+
+$("inspect").onclick = async () => {
+  const type = $("type").value;
+  const format = $("format").value;
+  const content = $("deliverable").value;
+  const statusEl = $("status");
+  const resultsEl = $("results");
+  statusEl.className = ""; statusEl.textContent = "";
+  resultsEl.innerHTML = "";
+
+  if (!content.trim()) { statusEl.className = "error"; statusEl.textContent = "Paste a deliverable first."; return; }
+  let criteria;
+  try { criteria = JSON.parse($("criteria").value || "[]"); }
+  catch (e) { statusEl.className = "error"; statusEl.textContent = "Criteria isn't valid JSON: " + e.message; return; }
+
+  statusEl.textContent = "Inspecting…";
+  $("inspect").disabled = true;
+  try {
+    const r = await fetch("/inspect_delivery", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ type, deliverable: { format, content }, criteria }),
+    });
+    const report = await r.json();
+    if (!r.ok) { statusEl.className = "error"; statusEl.textContent = "Failed: " + (report.message || r.status); return; }
+    statusEl.textContent = "";
+    render(report);
+  } catch (e) {
+    statusEl.className = "error"; statusEl.textContent = "Network error: " + e.message;
+  } finally {
+    $("inspect").disabled = false;
+  }
+};
+
+function render(report) {
+  const el = $("results");
+  const verdictClass = report.verdict === "pass" ? "pass" : "fail";
+  const rows = report.results.map((r) => {
+    const cls = r.status === "pass" ? "pass" : r.status === "fail" ? "fail" : "error";
+    const icon = r.status === "pass" ? "✓" : r.status === "fail" ? "✗" : "!";
+    const ev = r.evidence.map((e) => "<li><code class=\"small\">" + e.kind + "</code> — " + e.detail + "</li>").join("");
+    return "<div class=\"criterion\"><div class=\"crow\"><span class=\"chip " + cls + "\">" + icon + " " + r.status +
+      "</span><strong>" + r.description + "</strong></div><ul class=\"evidence\">" + ev + "</ul></div>";
+  }).join("");
+
+  el.innerHTML =
+    "<h2>Result</h2>" +
+    "<div class=\"verdict " + verdictClass + "\">" + (report.verdict === "pass" ? "✓ PASS" : "✗ FAIL") +
+    " — " + report.score.passed + "/" + report.score.total + " criteria passed</div>" +
+    rows +
+    "<div class=\"footer-links\">" +
+    "<a href=\"/r/" + report.id + "\" target=\"_blank\">View full signed report ↗</a>" +
+    "<a href=\"#\" id=\"copyLink\">Copy shareable link</a>" +
+    "</div>" +
+    "<div class=\"hint\">Embed: <code class=\"small\">&lt;a href=\"" + location.origin + "/r/" + report.id +
+    "\"&gt;&lt;img src=\"" + location.origin + "/badge/" + report.id + ".svg\"&gt;&lt;/a&gt;</code></div>";
+
+  document.getElementById("copyLink").onclick = (e) => {
+    e.preventDefault();
+    navigator.clipboard.writeText(location.origin + "/r/" + report.id);
+    e.target.textContent = "Copied!";
+  };
+}
+</script>
+</body>
+</html>

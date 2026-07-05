@@ -1,4 +1,6 @@
 import express from "express";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import { config, isConfiguredForPayment } from "./config.js";
 import { requirePayment } from "./x402.js";
 import { DataHarness } from "./harness/data.js";
@@ -10,9 +12,22 @@ import {
 } from "./report.js";
 import { saveReport, loadReport } from "./store.js";
 import { compileSpec, LlmNotConfiguredError, type DeliverableType } from "./compile.js";
+import { renderBadge } from "./badge.js";
+import { renderReportHtml, renderCalibrationHtml } from "./views.js";
+import { runCalibration } from "./calibration/run.js";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const PUBLIC_DIR = join(__dirname, "..", "public");
 
 const app = express();
 app.use(express.json({ limit: "5mb" }));
+
+// The paste-in web UI. Deliberately not payment-gated: this is how a human
+// (no wallet, no other agent integrated) tries Vouch on day one — the
+// cold-start bridge until the marketplace has real A2A traffic.
+app.get("/app", (_req, res) => {
+  res.sendFile(join(PUBLIC_DIR, "app.html"));
+});
 
 const SERVICE = {
   name: "Vouch",
@@ -36,6 +51,8 @@ app.get("/", (_req, res) => {
       { name: "evidence_pack", price: config.prices.evidence_pack, unit: "USDT base units",
         summary: "Bundle a report as arbitration-ready evidence (OKX evaluators / GenLayer).", status: "planned" },
     ],
+    tryItYourself: `${config.publicBaseUrl}/app`,
+    calibrationBenchmark: `${config.publicBaseUrl}/calibration`,
   });
 });
 
@@ -124,11 +141,38 @@ app.post("/evidence_pack", requirePayment("evidence_pack",
   res.status(501).json({ error: "not_implemented", message: "evidence_pack is planned (Phase 2)." });
 });
 
-// Public report view (JSON for now; HTML viewer in a later phase).
+// Public report view. Content-negotiated: browsers get the HTML report page,
+// API/agent clients (Accept: application/json, or no Accept-html preference)
+// get the raw signed JSON — same URL serves both audiences.
 app.get("/r/:id", (req, res) => {
   const r = loadReport(req.params.id);
   if (!r) { res.status(404).json({ error: "not_found" }); return; }
+  if (req.accepts(["html", "json"]) === "html") {
+    res.type("html").send(renderReportHtml(r, config.publicBaseUrl));
+    return;
+  }
   res.json(r);
+});
+
+// Embeddable status badge — the distribution loop: an ASP that displays this
+// on its own listing links back to the underlying report.
+app.get("/badge/:id.svg", (req, res) => {
+  const r = loadReport(req.params.id);
+  const state = r ? (r.verdict === "pass" ? "pass" : "fail") : "unknown";
+  res.type("image/svg+xml").set("Cache-Control", "no-cache").send(renderBadge(state));
+});
+
+// Public calibration benchmark: seeded deliverables with known planted defects,
+// re-run fresh on every request (never cached) against the real harnesses.
+// Answers "is this rigorous, or just another LLM judge" with a number anyone
+// can reproduce by reading src/calibration/fixtures.ts.
+app.get("/calibration", (req, res) => {
+  const cal = runCalibration();
+  if (req.accepts(["html", "json"]) === "html") {
+    res.type("html").send(renderCalibrationHtml(cal));
+    return;
+  }
+  res.json(cal);
 });
 
 // Anyone can verify a report's hash + signature independently.
