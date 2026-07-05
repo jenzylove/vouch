@@ -1,5 +1,14 @@
 # Deploying Vouch to Railway
 
+**Status: done.** Live at
+[vouch-production-c4ad.up.railway.app](https://vouch-production-c4ad.up.railway.app),
+connected to `github.com/jenzylove/vouch` (`main` branch) for auto-deploy.
+Done via the Railway CLI (`railway login`, `railway up`, `railway service
+source connect`, `railway volume add`, `railway variable set`, `railway
+domain`) rather than the dashboard steps below — kept as reference for what
+each step actually does, and as a fallback if the CLI flow ever needs
+repeating by hand.
+
 Why Railway and not Vercel: Vercel's serverless functions have a read-only
 filesystem (only `/tmp`, wiped between invocations) — incompatible with
 Vouch's current design, which persists the ed25519 signing key
