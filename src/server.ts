@@ -15,6 +15,7 @@ import { compileSpec, LlmNotConfiguredError, type DeliverableType } from "./comp
 import { renderBadge } from "./badge.js";
 import { renderReportHtml, renderCalibrationHtml } from "./views.js";
 import { runCalibration } from "./calibration/run.js";
+import { buildEvidencePack } from "./evidence.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = join(__dirname, "..", "public");
@@ -49,7 +50,7 @@ app.get("/", (_req, res) => {
       { name: "inspect_delivery", price: config.prices.inspect_delivery, unit: "USDT base units",
         summary: "Verify a deliverable against criteria with evidence-backed harnesses; signed report.", status: "live (data + content harnesses)" },
       { name: "evidence_pack", price: config.prices.evidence_pack, unit: "USDT base units",
-        summary: "Bundle a report as arbitration-ready evidence (OKX evaluators / GenLayer).", status: "planned" },
+        summary: "Bundle a report as arbitration-ready evidence (OKX evaluators / GenLayer).", status: "live" },
     ],
     tryItYourself: `${config.publicBaseUrl}/app`,
     calibrationBenchmark: `${config.publicBaseUrl}/calibration`,
@@ -134,11 +135,23 @@ app.post("/compile_spec", requirePayment("compile_spec",
   }
 });
 
-// --- evidence_pack: arbitration-ready bundle (planned, Phase 2) --------------
+// --- evidence_pack: arbitration-ready bundle for an existing report ---------
 
 app.post("/evidence_pack", requirePayment("evidence_pack",
-  "Arbitration-ready evidence bundle for a prior report."), (_req, res) => {
-  res.status(501).json({ error: "not_implemented", message: "evidence_pack is planned (Phase 2)." });
+  "Arbitration-ready evidence bundle for a prior report."), (req, res) => {
+  const body = req.body as { reportId?: string; disputeContext?: string } | undefined;
+  const reportId = body?.reportId;
+  if (typeof reportId !== "string" || reportId.trim().length === 0) {
+    res.status(400).json({ error: "bad_request", message: "Provide the 'reportId' of a prior inspect_delivery report." });
+    return;
+  }
+  const report = loadReport(reportId);
+  if (!report) {
+    res.status(404).json({ error: "not_found", message: `No report found for id '${reportId}'.` });
+    return;
+  }
+  const pack = buildEvidencePack(report, config.publicBaseUrl, body?.disputeContext);
+  res.json(pack);
 });
 
 // Public report view. Content-negotiated: browsers get the HTML report page,

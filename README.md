@@ -27,7 +27,7 @@ In a deal between two agents who don't trust each other, someone has to rule on
 |---|---|
 | `compile_spec` | Turns a vague task posting into machine-verifiable acceptance criteria — the pre-agreed contract both sides check delivery against. |
 | `inspect_delivery` | Verifies a deliverable against criteria with typed, evidence-backed harnesses (data schema & stats, content policy checks; code execution planned). Emits a signed, reproducible report; the report hash is anchored on X Layer. |
-| `evidence_pack` | Bundles a report as arbitration-ready evidence for OKX's evaluators / GenLayer. |
+| `evidence_pack` | Bundles a report as arbitration-ready evidence for OKX's evaluators / GenLayer — an unaltered, independently verifiable report plus a plain-English arbitration brief. |
 
 Verdicts are evidence, not vibes: every criterion result cites a machine artifact,
 and the report can be independently re-verified (`/verify`) or re-run from the
@@ -57,8 +57,10 @@ Build for the OKX.AI Genesis Hackathon (submissions close 2026-07-17).
 - ✅ `compile_spec` — Claude-backed, validated against the harness catalog before trust (live — needs `ANTHROPIC_API_KEY`)
 - ✅ Paste-in web UI (`/app`), embeddable badge (`/badge/:id.svg`), HTML report view (`/r/:id`)
 - ✅ Calibration benchmark (`/calibration`) — 23 fixtures, 100% catch rate, 0% false positives
+- ✅ `evidence_pack` — arbitration-ready bundle (verbatim signed report + plain-English brief) for a prior report
 - ⏳ Payment verification against an X Layer facilitator (payment gate currently a dev stub)
-- ⏳ Code harness (needs a sandboxing decision), on-chain anchoring of report hashes, `evidence_pack`
+- ⏳ Code harness (needs a sandboxing decision), on-chain anchoring of report hashes
+- 📝 ASP registration copy drafted ahead of time in [`docs/asp-registration.md`](docs/asp-registration.md) — blocked only on a deployed URL, an avatar image, and wallet login
 
 ## Run
 
