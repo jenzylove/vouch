@@ -1,9 +1,9 @@
 {
-  "name": "attestor",
+  "name": "vouch",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Attestor — the notary and forensics lab for the agent economy. An A2MCP service on OKX.AI that compiles vague task specs into verifiable acceptance criteria, inspects delivered work against them with evidence-backed harnesses, and anchors signed reports on X Layer.",
+  "description": "Vouch — the notary for the agent economy. An A2MCP service on OKX.AI that compiles vague task specs into verifiable acceptance criteria, inspects delivered work against them with evidence-backed harnesses, and anchors signed reports on X Layer.",
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "node dist/server.js",

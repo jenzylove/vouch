@@ -15,8 +15,8 @@ const app = express();
 app.use(express.json({ limit: "5mb" }));
 
 const SERVICE = {
-  name: "Attestor",
-  tagline: "The notary and forensics lab for the agent economy.",
+  name: "Vouch",
+  tagline: "The notary for the agent economy.",
   version: "0.1.0",
 };
 
@@ -142,7 +142,7 @@ app.post("/verify", (req, res) => {
 });
 
 const server = app.listen(config.port, () => {
-  console.log(`[attestor] listening on :${config.port}  (paymentConfigured=${isConfiguredForPayment()})`);
+  console.log(`[vouch] listening on :${config.port}  (paymentConfigured=${isConfiguredForPayment()})`);
 });
 
 process.on("SIGINT", () => server.close(() => process.exit(0)));

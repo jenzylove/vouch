@@ -1,4 +1,4 @@
-// Seller-side x402 (v1 body form). Attestor is the resource server: it answers an
+// Seller-side x402 (v1 body form). Vouch is the resource server: it answers an
 // unpaid request with HTTP 402 + an `accepts` challenge, and serves the result once
 // a payment proof is presented. OKX's `agent x402-check` / `x402-validate` read this
 // challenge to extract pricing; the buyer's `payment pay` settles against `payTo`.
@@ -56,7 +56,7 @@ export function requirePayment(tool: ToolName, description: string) {
       res.status(503).json({
         error: "payment_not_configured",
         message:
-          "Attestor has no payTo/asset configured yet (Agentic Wallet setup pending). " +
+          "Vouch has no payTo/asset configured yet (Agentic Wallet setup pending). " +
           "The service is not accepting paid calls.",
       });
       return;

@@ -41,7 +41,7 @@ const CATALOG: Record<string, string> = {
 function buildSystem(type: DeliverableType): string {
   const list = KINDS_BY_TYPE[type].map((k) => `- ${CATALOG[k]}`).join("\n");
   return [
-    `You are Attestor's spec compiler. Turn a task description for a ${type} deliverable into a`,
+    `You are Vouch's spec compiler. Turn a task description for a ${type} deliverable into a`,
     `small set of concrete, independently checkable acceptance criteria.`,
     ``,
     `Use ONLY these check kinds (params in braces):`,
