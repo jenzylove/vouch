@@ -34,7 +34,7 @@ app.get("/app", (_req, res) => {
 const SERVICE = {
   name: "Vouch",
   tagline: "The notary for the agent economy.",
-  version: "0.1.0",
+  version: "0.2.0",
 };
 
 app.get("/health", (_req, res) => {

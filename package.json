@@ -1,6 +1,6 @@
 {
   "name": "vouch",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Vouch — the notary for the agent economy. An A2MCP service on OKX.AI that compiles vague task specs into verifiable acceptance criteria, inspects delivered work against them with evidence-backed harnesses, and anchors signed reports on X Layer.",
