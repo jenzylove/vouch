@@ -11,12 +11,13 @@ import {
   finalizeReport, newReportId, sha256Hex, canonicalize, tally, verifyReport,
   type ReportCore, type Report,
 } from "./report.js";
-import { saveReport, loadReport } from "./store.js";
+import { saveReport, loadReport, updateReportAnchor } from "./store.js";
 import { compileSpec, LlmNotConfiguredError, type DeliverableType } from "./compile.js";
 import { renderBadge } from "./badge.js";
 import { renderReportHtml, renderCalibrationHtml } from "./views.js";
 import { runCalibration } from "./calibration/run.js";
 import { buildEvidencePack } from "./evidence.js";
+import { anchorHash, AnchoringUnavailableError } from "./anchor.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = join(__dirname, "..", "public");
@@ -105,6 +106,18 @@ app.post("/inspect_delivery", requirePayment("inspect_delivery",
     const report = finalizeReport(core);
     saveReport(report);
     res.json({ ...report, view: `${config.publicBaseUrl}/r/${report.id}` });
+
+    // Anchor the report hash on X Layer after responding -- never let
+    // blockchain confirmation add latency to the paid call. Best-effort: if
+    // the onchainos CLI isn't available in this environment, or the wallet
+    // isn't configured, the report simply stays unanchored (anchor: null).
+    anchorHash(report.reportSha256, config.payToAddress)
+      .then((anchor) => updateReportAnchor(report.id, anchor))
+      .catch((e) => {
+        if (!(e instanceof AnchoringUnavailableError)) {
+          console.error(`[anchor] failed for report ${report.id}: ${(e as Error).message}`);
+        }
+      });
   } catch (e) {
     res.status(422).json({ error: "inspection_failed", message: (e as Error).message });
   }
