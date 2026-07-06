@@ -9,6 +9,7 @@
 // (e.g. not yet bundled into a deployed container) -- anchoring is a
 // nice-to-have enrichment, never a hard dependency for producing a report.
 import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
 import { promisify } from "node:util";
 import type { Anchor } from "./report.js";
 
@@ -39,6 +40,44 @@ interface ContractCallResponse {
   error?: string;
 }
 
+// A fresh environment (e.g. a new container) has no persisted CLI session --
+// `wallet login` with no email argument does AK (API-key) login using
+// OKX_API_KEY/OKX_SECRET_KEY/OKX_PASSPHRASE from the environment, no OTP
+// needed. Cached in-process so we don't re-run it on every single anchor
+// call; a session-expiry retry clears the cache and logs in again once.
+let loggedIn = false;
+
+async function login(): Promise<void> {
+  await execFileAsync(ONCHAINOS_BIN, ["wallet", "login"], { timeout: 20000 });
+  loggedIn = true;
+}
+
+async function runContractCall(hashHex: string): Promise<string> {
+  const result = await execFileAsync(
+    ONCHAINOS_BIN,
+    [
+      "wallet", "contract-call",
+      "--to", ANCHOR_TARGET,
+      "--chain", "xlayer",
+      "--input-data", `0x${hashHex}`,
+      "--biz-type", "dapp",
+      "--force",
+    ],
+    { timeout: 45000 },
+  );
+  return result.stdout;
+}
+
+function extractCliError(e: unknown): string | undefined {
+  const err = e as NodeJS.ErrnoException & { stdout?: string };
+  if (!err.stdout) return undefined;
+  try {
+    return (JSON.parse(err.stdout) as ContractCallResponse).error;
+  } catch {
+    return undefined;
+  }
+}
+
 // Anchors a hex-encoded hash (no "0x" prefix) by sending it as calldata to the
 // burn address. `walletAddress` is the sender (our agentic wallet) -- required
 // so we fail fast if payment/wallet config is missing, not because it's the
@@ -47,43 +86,39 @@ export async function anchorHash(hashHex: string, walletAddress: string): Promis
   if (!walletAddress) {
     throw new AnchoringUnavailableError("no wallet address configured (PAY_TO_ADDRESS)");
   }
+  if (!existsSync(ONCHAINOS_BIN)) {
+    throw new AnchoringUnavailableError();
+  }
 
-  // TEMP diagnostic: confirm what path we're actually checking and whether
-  // Node's own fs sees it, before asking execFile to spawn it.
-  const { existsSync } = await import("node:fs");
-  console.error(`[anchor-diag] ONCHAINOS_BIN=${ONCHAINOS_BIN} existsSync=${existsSync(ONCHAINOS_BIN)}`);
+  if (!loggedIn) {
+    try {
+      await login();
+    } catch (e) {
+      throw new Error(`onchainos wallet login failed: ${(e as Error).message}`);
+    }
+  }
 
   let stdout: string;
   try {
-    const result = await execFileAsync(
-      ONCHAINOS_BIN,
-      [
-        "wallet", "contract-call",
-        "--to", ANCHOR_TARGET,
-        "--chain", "xlayer",
-        "--input-data", `0x${hashHex}`,
-        "--biz-type", "dapp",
-        "--force",
-      ],
-      { timeout: 45000 },
-    );
-    stdout = result.stdout;
+    stdout = await runContractCall(hashHex);
   } catch (e) {
-    const err = e as NodeJS.ErrnoException & { stdout?: string };
-    if (err.code === "ENOENT") throw new AnchoringUnavailableError();
-    // The CLI prints a JSON error body even on non-zero exit -- prefer that
-    // over Node's generic "Command failed" wrapper message.
-    let cliErrorMessage: string | undefined;
-    if (err.stdout) {
+    const cliError = extractCliError(e);
+    // Session expired mid-flight (e.g. after a long-idle container): log in
+    // again and retry exactly once, rather than fail every call thereafter.
+    if (cliError?.toLowerCase().includes("session expired")) {
+      loggedIn = false;
       try {
-        cliErrorMessage = (JSON.parse(err.stdout) as ContractCallResponse).error;
-      } catch {
-        // stdout wasn't JSON -- fall through to the generic message below
+        await login();
+        stdout = await runContractCall(hashHex);
+      } catch (e2) {
+        const retryError = extractCliError(e2);
+        throw new Error(`anchor transaction rejected after re-login: ${retryError ?? (e2 as Error).message}`);
       }
+    } else {
+      throw new Error(cliError
+        ? `anchor transaction rejected: ${cliError}`
+        : `anchor transaction failed: ${(e as Error).message}`);
     }
-    throw new Error(cliErrorMessage
-      ? `anchor transaction rejected: ${cliErrorMessage}`
-      : `anchor transaction failed: ${(e as Error).message}`);
   }
 
   let parsed: ContractCallResponse;

@@ -114,9 +114,9 @@ app.post("/inspect_delivery", requirePayment("inspect_delivery",
     anchorHash(report.reportSha256, config.payToAddress)
       .then((anchor) => updateReportAnchor(report.id, anchor))
       .catch((e) => {
-        // TEMP: log AnchoringUnavailableError too, to diagnose the deployed
-        // environment. Revert to silent-skip once confirmed working.
-        console.error(`[anchor] ${e instanceof AnchoringUnavailableError ? "unavailable" : "failed"} for report ${report.id}: ${(e as Error).message}`);
+        if (!(e instanceof AnchoringUnavailableError)) {
+          console.error(`[anchor] failed for report ${report.id}: ${(e as Error).message}`);
+        }
       });
   } catch (e) {
     res.status(422).json({ error: "inspection_failed", message: (e as Error).message });
