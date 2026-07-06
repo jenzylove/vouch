@@ -52,11 +52,9 @@ async function login(): Promise<void> {
     await execFileAsync(ONCHAINOS_BIN, ["wallet", "login"], { timeout: 20000 });
     loggedIn = true;
   } catch (e) {
-    // TEMP diagnostic: surface the CLI's actual stdout/stderr, not just
-    // Node's generic "Command failed" wrapper message.
-    const err = e as NodeJS.ErrnoException & { stdout?: string; stderr?: string };
-    console.error(`[anchor-diag] login stdout=${JSON.stringify(err.stdout)} stderr=${JSON.stringify(err.stderr)}`);
-    throw e;
+    // Surface the CLI's own error message (e.g. missing OKX_API_KEY/
+    // OKX_SECRET_KEY/OKX_PASSPHRASE) instead of Node's generic wrapper.
+    throw new Error(extractCliError(e) ?? (e as Error).message);
   }
 }
 
