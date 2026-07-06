@@ -48,6 +48,11 @@ export async function anchorHash(hashHex: string, walletAddress: string): Promis
     throw new AnchoringUnavailableError("no wallet address configured (PAY_TO_ADDRESS)");
   }
 
+  // TEMP diagnostic: confirm what path we're actually checking and whether
+  // Node's own fs sees it, before asking execFile to spawn it.
+  const { existsSync } = await import("node:fs");
+  console.error(`[anchor-diag] ONCHAINOS_BIN=${ONCHAINOS_BIN} existsSync=${existsSync(ONCHAINOS_BIN)}`);
+
   let stdout: string;
   try {
     const result = await execFileAsync(
